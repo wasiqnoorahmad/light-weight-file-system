@@ -19,7 +19,7 @@ if not hasattr(fuse, '__version__'):
 
 fuse.fuse_python_api = (0, 2)
 
-db = DB('/home/cujo/nfs/db/db1')
+db = DB('/home/cujo/nfs/db/db2')
 
 
 class LWStat(fuse.Stat):
@@ -43,10 +43,12 @@ class LWFS(Fuse):
         if path == '/':
             st.st_mode = stat.S_IFDIR | 0755
             st.st_nlink = 2
-        elif db.get(path[1:].encode()):
+        elif db.get(b'i_' + path[1:].encode()):
             st.st_mode = stat.S_IFREG | 0444
             st.st_nlink = 1
-            st.st_size = len(db.get(path[1:].encode()))
+            st.st_size = int(loads(db.get(b'i_' + path[1:].encode()))['f_size'])
+            # int(loads(db.get(b'i_' + path[1:].encode()))['f_size'])
+            # st.st_size = len(db.get(path[1:].encode()))
         else:
             return -errno.ENOENT
         return st
@@ -54,16 +56,24 @@ class LWFS(Fuse):
     def readdir(self, path, offset):
         yield fuse.Direntry('.')
         yield fuse.Direntry('..')
-        for name, _ in db.iterator(prefix=b'f_'):
-            yield fuse.Direntry(name)
+        for name, _ in db.iterator(prefix=b'i_'):
+            yield fuse.Direntry(name[2:])
 
     def open(self, path, flags):
         accmode = os.O_RDONLY | os.O_WRONLY | os.O_RDWR
         if (flags & accmode) != os.O_RDONLY:
             return -errno.EACCES
 
+    def fetch_contant(self, contant_blocks):
+        content = ''
+        for block in contant_blocks:
+            content += db.get(b'c_' + str(block).encode())
+        return content
+
     def read(self, path, size, offset):
-        content = db.get(path[1:].encode())
+        content_blocks = loads(db.get(b'i_' + path[1:].encode()))['f_blocks']
+        content = self.fetch_contant(content_blocks)
+        print("Content Len: ", len(content))
         if not content:
             return -errno.ENOENT
         slen = len(content)
