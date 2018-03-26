@@ -4,7 +4,7 @@ from random import sample
 
 
 def update_vfs(new_block_size, new_blocks_count):
-    db.put(b'vfs', dumps({b'f_bsize': new_block_size, b'f_frsize': new_block_size, b'f_blocks': new_blocks_count,
+    db.put(b'vfs', dumps({b'f_bsize': new_block_size, b'f_frsize': new_block_size, b'f_blocks': total_blocks,
                           b'f_bfree': new_blocks_count, b'f_bavail': new_blocks_count}))
     return new_block_size, new_blocks_count - 1
 
@@ -44,11 +44,11 @@ class INode(object):
         self.f_frblocks = int(0)
 
 
-blocks = 1024*10
+total_blocks = 1024*10
 block_size = 1024
 ev_inodes, ev_blocks = (0, 0)
 db = DB('/home/cujo/nfs/db/db2', create_if_missing=True)
-_, blocks = update_vfs(block_size, blocks)
+_, current_blocks = update_vfs(block_size, total_blocks)
 
 
 for i in range(1024):
@@ -59,11 +59,11 @@ for i in range(1024):
         inode.f_blocks[k] = block_number
         bytes_written += populate_block(block_number)
         ev_blocks += 1
-        _, blocks = update_vfs(block_size, blocks)
+        _, current_blocks = update_vfs(block_size, current_blocks)
     inode.f_size = bytes_written
     db.put(b'i_' + str(i).encode(), dumps(inode.__dict__))
     ev_inodes += 1
-    _, blocks = update_vfs(block_size, blocks)
+    _, current_blocks = update_vfs(block_size, current_blocks)
 db.close()
 
 # Some Stats collection for evaluation

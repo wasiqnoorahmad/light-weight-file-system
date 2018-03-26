@@ -47,8 +47,6 @@ class LWFS(Fuse):
             st.st_mode = stat.S_IFREG | 0444
             st.st_nlink = 1
             st.st_size = int(loads(db.get(b'i_' + path[1:].encode()))['f_size'])
-            # int(loads(db.get(b'i_' + path[1:].encode()))['f_size'])
-            # st.st_size = len(db.get(path[1:].encode()))
         else:
             return -errno.ENOENT
         return st
@@ -64,9 +62,9 @@ class LWFS(Fuse):
         if (flags & accmode) != os.O_RDONLY:
             return -errno.EACCES
 
-    def fetch_contant(self, contant_blocks):
+    def fetch_contant(self, content_blocks):
         content = ''
-        for block in contant_blocks:
+        for block in content_blocks:
             content += db.get(b'c_' + str(block).encode())
         return content
 
