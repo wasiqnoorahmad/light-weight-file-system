@@ -6,7 +6,8 @@
 #    See the file COPYING.
 #
 
-import os, stat, errno
+import stat
+import errno
 import fuse
 from ast import literal_eval
 from json import loads, dumps
@@ -27,6 +28,7 @@ db = DB('/home/cujo/nfs/db/db3')
 
 class LWStat(fuse.Stat):
     def __init__(self):
+        fuse.Stat.__init__(self)
         self.st_mode = 0
         self.st_ino = 0
         self.st_dev = 0
@@ -145,33 +147,23 @@ class LWFS(Fuse):
         for free_block in free_blocks:
             if free_block:
                 used_blocks.remove(free_block)
-        print()
         db.put(b'c_' + bytes(used_blocks_block_number), bytes(used_blocks))
         self.update_filenames()
         db.delete(inode_number)
 
     def write(self, path, buf, offset):
-        print('In write')
-        # print('Buf', buf)
-        # xnode= INode()
-        # xnode_id = self.allocate_block()
-        # buffer_size = loads(db.get(b'vfs'))['f_bsize']
-        # print('Length of content is: ', len(buf))
-        # print('And content is, ', buf)
-        # required_blocks = ceil(float(len(buf)) / loads(db.get(b'vfs'))['f_bsize'])
-        # print("Required Blocks are: ", required_blocks)
-        # for i in range(int(required_blocks)):
-        #     xnode.f_blocks[i] = self.allocate_block()
-        # self.put_content(buf, xnode.f_blocks, buffer_size)
-        # self.files[path[1:]] = bytes(xnode_id)
-        # self.update_filenames()
-        # db.put(b'i_' + bytes(xnode_id), dumps(xnode.__dict__))
-        # print('Block is ', db.get(b'i_' + bytes(xnode_id)))
-        # print('In write')
+        if path[1:] in self.files:
+            inode_number = b'i_' + bytes(self.files[path[1:]])
+            xnode = loads(db.get(inode_number))
+            block_size = loads(db.get(b'vfs'))['f_bsize']
+            required_blocks = ceil(float(len(buf)) / block_size)
+            if xnode['f_size'] == 0 or required_blocks > len(filter(None, xnode['f_blocks'])):
+                for i in range(int(required_blocks)):
+                    xnode['f_blocks'][xnode['f_blocks'].index(None)] = self.allocate_block()
+            xnode['f_size'] = len(buf)
+            self.put_content(buf, xnode['f_blocks'], block_size)
+            db.put(b'i_' + bytes(self.files[path[1:]]), dumps(xnode))
         return len(buf)
-        # print(path, buf, offset)
-        # return 12
-        # # inode = db.get(b'i_' + path[1:].encode())
 
     def mknod(self, path, mode, dev):
         xnode = INode()
@@ -190,8 +182,7 @@ class LWFS(Fuse):
         return 0
 
     def release(self, path, flags):
-        print("In release")
-        # print(path)
+        return 0
 
     def truncate(self, path, size):
         return 0

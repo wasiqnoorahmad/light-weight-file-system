@@ -29,7 +29,7 @@ def put_inode(xnode):
 
 
 def populate_block(number):
-    db.put(b'c_' + str(number).encode(), data)
+    db.put(b'c_' + bytes(number), data)
     return len(data)
 
 
@@ -103,7 +103,7 @@ for i in range(len(file_names)):
     inode = INode()
     put_inode(inode)
     add_filename(file_names[i])
-    db.put(b'i_' + str(i).encode(), dumps(inode.__dict__))
+    db.put(b'i_' + bytes(i), dumps(inode.__dict__))
 
 
 # Keeping track of unused blocks

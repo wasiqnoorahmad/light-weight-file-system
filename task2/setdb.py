@@ -10,7 +10,7 @@ def update_vfs(new_block_size, new_blocks_count):
 
 
 def populate_block(number):
-    db.put(b'c_' + str(number).encode(), data)
+    db.put(b'c_' + bytes(number), data)
     return len(data)
 
 
@@ -33,7 +33,7 @@ data = b'JBwYcVOxKchXnaLmwEYfKtHwkwSKKgOpVGPPDgyKjvPnFlpLZPbTPSrOot\ntIMPTQ' \
        b'YMWOFudgegHBEOwufZfOUAMmzrqCEEGozQPPnLXhZcFyNQpnOTnmfPKsMVcndWtOUr' \
        b'WwqYN\n'
 # Random unique block numbers on which data will reside
-blocks_sample = iter(sample(range(0, 8*1024), 8*1024))
+blocks_sample = sample(range(0, 8*1024), 8*1024)
 
 
 class INode(object):
@@ -54,16 +54,19 @@ _, current_blocks = update_vfs(block_size, total_blocks)
 for i in range(1024):
     bytes_written = 0
     inode = INode()
-    for k in range(len(inode.f_blocks)):
-        block_number = next(blocks_sample)
+    for k in range(len(inode.f_blocks)-1):
+        block_number = blocks_sample.pop()
         inode.f_blocks[k] = block_number
         bytes_written += populate_block(block_number)
         ev_blocks += 1
         _, current_blocks = update_vfs(block_size, current_blocks)
     inode.f_size = bytes_written
-    db.put(b'i_' + str(i).encode(), dumps(inode.__dict__))
+    db.put(b'i_' + bytes(i), dumps(inode.__dict__))
     ev_inodes += 1
     _, current_blocks = update_vfs(block_size, current_blocks)
+db.put(b'fb', bytes(blocks_sample))
+ev_blocks += 1
+_, current_blocks = update_vfs(block_size, current_blocks)
 db.close()
 
 # Some Stats collection for evaluation

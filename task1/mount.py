@@ -6,7 +6,8 @@
 #    See the file COPYING.
 #
 
-import os, stat, errno
+import stat
+import errno
 import fuse
 from json import loads
 from fuse import Fuse
@@ -19,11 +20,12 @@ if not hasattr(fuse, '__version__'):
 
 fuse.fuse_python_api = (0, 2)
 
-db = DB('/home/cujo/nfs/db/db1')
+db = DB('/home/cujo/nfs/db/db1', block_size=512)
 
 
 class LWStat(fuse.Stat):
     def __init__(self):
+        fuse.Stat.__init__(self)
         self.st_mode = 0
         self.st_ino = 0
         self.st_dev = 0
@@ -37,16 +39,15 @@ class LWStat(fuse.Stat):
 
 
 class LWFS(Fuse):
-
     def getattr(self, path):
         st = LWStat()
         if path == '/':
             st.st_mode = stat.S_IFDIR | 0755
             st.st_nlink = 2
-        elif db.get(path[1:].encode()):
-            st.st_mode = stat.S_IFREG | 0444
+        elif db.get(bytes(path[1:])):
+            st.st_mode = stat.S_IFREG | 0664
             st.st_nlink = 1
-            st.st_size = len(db.get(path[1:].encode()))
+            st.st_size = len(bytes(db.get(path[1:])))
         else:
             return -errno.ENOENT
         return st
@@ -58,12 +59,10 @@ class LWFS(Fuse):
             yield fuse.Direntry(name)
 
     def open(self, path, flags):
-        accmode = os.O_RDONLY | os.O_WRONLY | os.O_RDWR
-        if (flags & accmode) != os.O_RDONLY:
-            return -errno.EACCES
+        return 0
 
     def read(self, path, size, offset):
-        content = db.get(path[1:].encode())
+        content = db.get(bytes(path[1:]))
         if not content:
             return -errno.ENOENT
         slen = len(content)
@@ -75,8 +74,26 @@ class LWFS(Fuse):
             buf = ''
         return buf
 
+    def write(self, path, buf, offset):
+        content = db.get(bytes(path[1:]))
+        if content:
+            if len(buf) <= loads(db.get(b'vfs'))['f_bsize']:
+                db.put(bytes(path[1:]), buf)
+            else:
+                return -errno.EPERM
+        return len(buf)
+
     def statfs(self):
         return fuse.StatVfs(**loads(db.get(b'vfs')))
+
+    def release(self, path, flags):
+        return 0
+
+    def truncate(self, path, size):
+        return 0
+
+    def utime(self, path, times):
+        return 0
 
 
 def main():
@@ -84,6 +101,7 @@ def main():
     server = LWFS(version="%prog " + fuse.__version__, usage=usage)
     server.parse(errex=1)
     server.main()
+
 
 if __name__ == '__main__':
     main()

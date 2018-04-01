@@ -6,11 +6,14 @@
 #    See the file COPYING.
 #
 
-import os, stat, errno
+import stat
+import errno
 import fuse
-from json import loads
+from json import loads, dumps
 from fuse import Fuse
 from plyvel import DB
+from ast import literal_eval
+from math import ceil
 
 
 if not hasattr(fuse, '__version__'):
@@ -24,6 +27,7 @@ db = DB('/home/cujo/nfs/db/db2')
 
 class LWStat(fuse.Stat):
     def __init__(self):
+        fuse.Stat.__init__(self)
         self.st_mode = 0
         self.st_ino = 0
         self.st_dev = 0
@@ -37,16 +41,15 @@ class LWStat(fuse.Stat):
 
 
 class LWFS(Fuse):
-
     def getattr(self, path):
         st = LWStat()
         if path == '/':
             st.st_mode = stat.S_IFDIR | 0755
             st.st_nlink = 2
-        elif db.get(b'i_' + path[1:].encode()):
-            st.st_mode = stat.S_IFREG | 0444
+        elif db.get(b'i_' + bytes(path[1:])):
+            st.st_mode = stat.S_IFREG | 0644
             st.st_nlink = 1
-            st.st_size = int(loads(db.get(b'i_' + path[1:].encode()))['f_size'])
+            st.st_size = int(loads(db.get(b'i_' + bytes(path[1:])))['f_size'])
         else:
             return -errno.ENOENT
         return st
@@ -58,20 +61,25 @@ class LWFS(Fuse):
             yield fuse.Direntry(name[2:])
 
     def open(self, path, flags):
-        accmode = os.O_RDONLY | os.O_WRONLY | os.O_RDWR
-        if (flags & accmode) != os.O_RDONLY:
-            return -errno.EACCES
+        return 0
 
     def fetch_contant(self, content_blocks):
         content = ''
         for block in content_blocks:
-            content += db.get(b'c_' + str(block).encode())
+            if block:
+                content += db.get(b'c_' + bytes(block))
+        return content
+
+    def fetch_content(self, content_blocks):
+        content = ''
+        for block in content_blocks:
+            if block:
+                content += db.get(b'c_' + bytes(block))
         return content
 
     def read(self, path, size, offset):
-        content_blocks = loads(db.get(b'i_' + path[1:].encode()))['f_blocks']
+        content_blocks = loads(db.get(b'i_' + bytes(path[1:])))['f_blocks']
         content = self.fetch_contant(content_blocks)
-        print("Content Len: ", len(content))
         if not content:
             return -errno.ENOENT
         slen = len(content)
@@ -83,8 +91,43 @@ class LWFS(Fuse):
             buf = ''
         return buf
 
+    def put_content(self, content, content_blocks, chunk_size):
+        for i, block in enumerate(content_blocks):
+            if block:
+                db.put(b'c_' + bytes(block), content[i*chunk_size: (i+1)*chunk_size])
+
+    def allocate_block(self):
+        free_blocks = literal_eval(db.get(b'fb'))
+        block = free_blocks.pop()
+        db.put(b'fb', bytes(free_blocks))
+        return block
+
+    def write(self, path, buf, offset):
+        xnode = loads(db.get(b'i_' + bytes(path[1:])))
+        if xnode:
+            block_size = loads(db.get(b'vfs'))['f_bsize']
+            required_blocks = ceil(float(len(buf)) / block_size)
+            if xnode['f_size'] == 0 or required_blocks > len(filter(None, xnode['f_blocks'])):
+                for i in range(int(required_blocks)):
+                    xnode['f_blocks'][xnode['f_blocks'].index(None)] = self.allocate_block()
+            xnode['f_size'] = len(buf)
+            self.put_content(buf, xnode['f_blocks'], block_size)
+            db.put(b'i_' + bytes(path[1:]), dumps(xnode))
+        else:
+            return -errno.EPERM
+        return len(buf)
+
     def statfs(self):
         return fuse.StatVfs(**loads(db.get(b'vfs')))
+
+    def release(self, path, flags):
+        return 0
+
+    def truncate(self, path, size):
+        return 0
+
+    def utime(self, path, times):
+        return 0
 
 
 def main():
