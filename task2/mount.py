@@ -9,6 +9,7 @@
 import stat
 import errno
 import fuse
+import sys
 from json import loads, dumps
 from fuse import Fuse
 from plyvel import DB
@@ -22,7 +23,7 @@ if not hasattr(fuse, '__version__'):
 
 fuse.fuse_python_api = (0, 2)
 
-db = DB('/home/cujo/nfs/db/db2')
+db = DB('/home/cujo/nfs/db/db2', block_size=int(sys.argv[1]))
 
 
 class LWStat(fuse.Stat):
@@ -135,6 +136,7 @@ def main():
     server = LWFS(version="%prog " + fuse.__version__, usage=usage)
     server.parse(errex=1)
     server.main()
+
 
 if __name__ == '__main__':
     main()

@@ -9,6 +9,7 @@
 import stat
 import errno
 import fuse
+import sys
 from ast import literal_eval
 from json import loads, dumps
 from fuse import Fuse
@@ -23,7 +24,7 @@ if not hasattr(fuse, '__version__'):
 
 fuse.fuse_python_api = (0, 2)
 
-db = DB('/home/cujo/nfs/db/db3')
+db = DB('/home/cujo/nfs/db/db3', block_size=int(sys.argv[1]))
 
 
 class LWStat(fuse.Stat):

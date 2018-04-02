@@ -1,1 +1,1 @@
-python $1/mount.py -o allow_other $2 $3 /home/cujo/nfs/mountpoint
+python $1/mount.py $2 -o allow_other /home/cujo/nfs/mountpoint

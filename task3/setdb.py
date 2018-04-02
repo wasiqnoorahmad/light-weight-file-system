@@ -1,3 +1,4 @@
+import sys
 from plyvel import DB
 from json import dumps
 from random import sample, randint
@@ -29,6 +30,9 @@ def put_inode(xnode):
 
 
 def populate_block(number):
+    if file_names[i] == 'vaf':
+        db.put(b'c_' + bytes(number), ' ')
+        return len(' ')
     db.put(b'c_' + bytes(number), data)
     return len(data)
 
@@ -97,7 +101,7 @@ block_size = 1024
 
 # Random unique block numbers on which data will reside
 blocks_sample = sample(range(1, 8*block_size), 8*block_size - 1)
-db = DB('/home/cujo/nfs/db/db3', create_if_missing=True)
+db = DB('/home/cujo/nfs/db/db3', create_if_missing=True, block_size=int(sys.argv[1]))
 
 for i in range(len(file_names)):
     inode = INode()

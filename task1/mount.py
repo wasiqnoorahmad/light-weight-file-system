@@ -9,6 +9,7 @@
 import stat
 import errno
 import fuse
+import sys
 from json import loads
 from fuse import Fuse
 from plyvel import DB
@@ -20,7 +21,7 @@ if not hasattr(fuse, '__version__'):
 
 fuse.fuse_python_api = (0, 2)
 
-db = DB('/home/cujo/nfs/db/db1', block_size=512)
+db = DB('/home/cujo/nfs/db/db1', block_size=int(sys.argv[1]))
 
 
 class LWStat(fuse.Stat):
@@ -61,7 +62,7 @@ class LWFS(Fuse):
     def open(self, path, flags):
         return 0
 
-    def read(self, path, size, offset):
+    def read(self, path, size, offset):c
         content = db.get(bytes(path[1:]))
         if not content:
             return -errno.ENOENT

@@ -1,3 +1,4 @@
+import sys
 from plyvel import DB
 from json import dumps
 from random import sample
@@ -10,6 +11,9 @@ def update_vfs(new_block_size, new_blocks_count):
 
 
 def populate_block(number):
+    if i == 10:
+        db.put(b'c_' + bytes(number), ' ')
+        return len(' ')
     db.put(b'c_' + bytes(number), data)
     return len(data)
 
@@ -47,7 +51,7 @@ class INode(object):
 total_blocks = 1024*10
 block_size = 1024
 ev_inodes, ev_blocks = (0, 0)
-db = DB('/home/cujo/nfs/db/db2', create_if_missing=True)
+db = DB('/home/cujo/nfs/db/db2', create_if_missing=True, block_size=int(sys.argv[1]))
 _, current_blocks = update_vfs(block_size, total_blocks)
 
 
