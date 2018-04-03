@@ -47,10 +47,3 @@ Following results are produced:
 **0+1 records out**
 **452 bytes copied, 0.000884651 s, 511 kB/s**
 Indicating that 0.000884651 is the latency.
-
-Then you can run *build_tables.py* Python script with input and output filenames to produce the tables required for the evaluation. An example would be:
-**sudo python build_tables.py output_task1.txt tables_task1.csv**
-
-## Author ##
-Wasiq Noor | 17030038{@lums.edu.pk}
-
