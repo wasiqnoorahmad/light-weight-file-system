@@ -31,19 +31,29 @@ To unmount the filesystem just execute the unmount script as follow:
 ## Evaluation ##
 To evaluate the perofrmance of the filesystem. Go into the evaluation folder and execute the file revelant to the part you are going to evaluate. For example,
 to evaluate Part 1, simple execute *evaluate_1.sh* with command:
+
 **sudo ./evaluate_1.sh**
+
 This script measures the throughput and latency of the filesystem using *dd* utility. An example command to measure throughput is:
+
 **dd if=mountpoint/<some file name> bs=<block size> count=1 oflag=dsync 2>> evaluate/<output file name>**
+
 This command produces the following result:
+
 **0+1 records in**
 **0+1 records out**
 **452 bytes copied, 0.000720203 s, 628 kB/s**
+
 Output shows tha 628 kB/s is the latency.
 
 Similarly, latency can also be calculated using *dd* with following command:
+
 **dd if=mountpoint/<some file name> bs=<block size> count=1000 oflag=dsync 2>> evaluate/<output file name>**
+
 Following results are produced:
+
 **0+1 records in**
 **0+1 records out**
 **452 bytes copied, 0.000884651 s, 511 kB/s**
+
 Indicating that 0.000884651 is the latency.
